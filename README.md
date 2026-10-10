@@ -22,12 +22,73 @@ flowchart TD
 
 **Regla de integración:** el ATM no modifica directamente los saldos de cuentas en la base del Banco Central. Las operaciones que afectan dinero se solicitan a su API autorizada.
 
-## Tecnologías previstas
 
-- **Node.js y Express.js:** API del cajero.
-- **Supabase (PostgreSQL):** persistencia de datos operativos del ATM.
-- **Vercel:** plataforma acordada por el equipo para el despliegue.
-- **GitHub:** repositorio y despliegue continuo.
+┌──────────────────────────────────────────────┐
+│ BANCO CENTRAL (Laravel) │
+│ - API REST (HTTPS + X-API-Key) │
+│ - Supabase (PostgreSQL): saldos, tx │
+└──────────────────────────────────────────────┘
+▲ ▲
+│ │
+│ HTTPS + API Key │
+│ │
+┌────────┴────────┐ ┌───────┴──────────┐
+│ SUCURSAL │ │ ATM │
+│ (Laravel) │ │ (Express) │
+│ SQLite local │ │ SQLite local │
+└─────────────────┘ └──────────────────┘
+▲
+│
+┌──────┴───────┐
+│ Navegador │
+│ (UI ATM) │
+└──────────────┘
+
+
+## Estructura del proyecto
+
+servidor-atm/
+├── public/ # Frontend servido por Express
+│ ├── index.html
+│ ├── style.css
+│ └── app.js
+├── src/
+│ ├── controllers/
+│ │ └── atm.controller.js # Manejo de req/res
+│ ├── routes/
+│ │ └── atm.routes.js # Definición de endpoints
+│ ├── services/
+│ │ ├── centralBank.service.js # Cliente HTTP al Banco Central
+│ │ ├── cash.service.js # Dispensación y conteo de efectivo
+│ │ ├── operation.service.js # Lógica de retiro/depósito
+│ │ ├── auth.service.js # Login y sesiones
+│ │ └── sync.service.js # Worker de cola de sincronización
+│ ├── middleware/
+│ │ ├── apiKey.middleware.js # Valida configuración del ATM
+│ │ └── role.middleware.js # Autorización por rol
+│ ├── database/
+│ │ ├── db.js # Inicialización de SQLite
+│ │ └── schema.sql # Esquema de las 7 tablas locales
+│ └── app.js # Punto de entrada Express
+├── tests/ # Pruebas automatizadas
+├── mock-central.js # Mock del Banco Central (solo desarrollo)
+├── .env.example
+├── .gitignore
+├── package.json
+└── README.md
+
+
+## Stack tecnológico
+
+| Componente | Tecnología |
+|---|---|
+| Runtime | Node.js 22+ |
+| Framework HTTP | Express 5 |
+| Base de datos local | SQLite (`better-sqlite3`) |
+| Cliente HTTP | `fetch` nativo |
+| Seguridad | Helmet, CORS, API Keys |
+| Frontend | HTML + CSS + JavaScript vanilla |
+| Despliegue | Vercel (serverless) |
 
 ## Base de datos ATM
 
