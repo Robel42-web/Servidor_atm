@@ -23,6 +23,47 @@ flowchart TD
 **Regla de integración:** el ATM no modifica directamente los saldos de cuentas en la base del Banco Central. Las operaciones que afectan dinero se solicitan a su API autorizada.
 
 
+┌──────────────────────────────────────────────┐
+
+│ BANCO CENTRAL (Laravel) │
+
+│ - API REST (HTTPS + X-API-Key) │
+
+│ - Supabase (PostgreSQL): saldos, tx │
+
+└──────────────────────────────────────────────┘
+
+▲ ▲
+
+│ │
+
+│ HTTPS + API Key │
+
+│ │
+
+┌────────┴────────┐ ┌───────┴──────────┐
+
+│ SUCURSAL │ │ ATM │
+
+│ (Laravel) │ │ (Express) │
+
+│ SQLite local │ │ SQLite local │
+
+└─────────────────┘ └──────────────────┘
+
+▲
+
+│
+
+┌──────┴───────┐
+
+│ Navegador │
+
+│ (UI ATM) │
+
+└──────────────┘
+
+
 
 ## Estructura del proyecto
 
