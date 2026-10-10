@@ -166,32 +166,54 @@ El proyecto Supabase `servidor-atm` contiene estas seis tablas:
 Crear un archivo `.env` local con los valores reales. **No subirlo a GitHub.** Los nombres deben validarse con el código definitivo.
 
 ```dotenv
-# Servidor ATM — Supabase
-SUPABASE_URL=https://TU_PROYECTO.supabase.co
-SUPABASE_PUBLISHABLE_KEY=TU_CLAVE_PUBLICABLE
-SUPABASE_SECRET_KEY=TU_CLAVE_SECRETA_SOLO_BACKEND
 
-# API del Banco Central (NO es la URL de Supabase)
-CENTRAL_API_URL=https://URL_PUBLICA_DEL_BACKEND_CENTRAL
-CENTRAL_NODE_API_KEY=CLAVE_DE_NODO_EMITIDA_POR_BANCO_CENTRAL
+# Entorno
+PORT=3001
+NODE_ENV=development
 
-# Entorno local
-PORT=3000
+# SQLite local
+SQLITE_PATH=./atm.db
+
+# Banco Central 
+CENTRAL_API_URL=https://banco-central.onrender.com
+ATM_API_KEY=una_api_key_de_prueba
+ATM_CODE=ATM-001
+
 ```
 
 **Seguridad:** la `SUPABASE_SECRET_KEY` y `CENTRAL_NODE_API_KEY` son secretos del servidor; nunca deben exponerse en el navegador, publicarse en el README o incluirse en commits. La clave de nodo es distinta de la clave secreta de Supabase. La URL del Banco Central se completará después de su despliegue.
 
-## Instalación local (pendiente de validar)
+## 🚀 Instalación y ejecución
 
-Cuando el compañero responsable suba el proyecto Express y su `package.json`:
+### Requisitos previos
+
+- Node.js 22 o superior
+- npm 10 o superior
+
+### Pasos
 
 ```bash
+# 1. Clonar el repositorio
 git clone https://github.com/Robel42-web/Servidor_atm.git
 cd Servidor_atm
+
+# 2. Instalar dependencias
 npm install
+
+# 3. Copiar el archivo de variables de entorno
+cp .env.example .env
+# Editar .env con la URL del Banco Central y la API Key del nodo
+
+# 4. Iniciar en modo desarrollo
+npm run dev
+
+# 5. (Opcional) En otra terminal, correr el mock del Banco Central
+node mock-central.js
+
 ```
 
-Configurar `.env` y ejecutar el script que finalmente se defina en `package.json` (por ejemplo, `npm run dev` o `npm start`). **Aún no se confirma el comando de arranque.**
+La aplicación estará disponible en http://localhost:3001.
+
 
 ## Despliegue previsto en Vercel
 
