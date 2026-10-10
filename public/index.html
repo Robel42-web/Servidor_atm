@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ATM - Nodo Cajero</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="logo">🏧</span>
+      <div>
+        <h1>ATM <span id="atm-code-label">—</span></h1>
+        <small>Nodo Cajero Automático</small>
+      </div>
+    </div>
+    <div style="display:flex; gap:1rem; align-items:center;">
+      <div id="session-info" style="color:#cbd5e1; font-size:0.85rem; display:none;">
+        <span id="session-user"></span>
+        <button id="btn-logout" class="btn-logout">Cerrar sesión</button>
+      </div>
+      <div class="status" id="status-badge">Cargando…</div>
+    </div>
+  </header>
+
+  <!-- LOGIN -->
+  <section id="login-screen" class="login-screen">
+    <div class="login-card">
+      <h2>Iniciar sesión</h2>
+      <label>Usuario <input id="login-user" placeholder="admin o número de cuenta" /></label>
+      <label>Contraseña <input id="login-pass" type="password" /></label>
+      <button id="btn-login">Ingresar</button>
+      <div class="result" id="login-result"></div>
+      <p class="hint" style="margin-top:1rem;">
+        Admin: <code>admin / admin123</code><br>
+        Usuario: <code>1234567890 / 1234</code>
+      </p>
+    </div>
+  </section>
+
+  <!-- APP (oculto hasta login) -->
+  <div id="app" style="display:none;">
+    <nav class="tabs">
+      <button data-tab="operations" class="active">💳 Operaciones</button>
+      <button data-tab="admin" data-role="admin">⚙️ Administración</button>
+    </nav>
+
+    <main>
+      <!-- OPERACIONES -->
+      <section id="tab-operations" class="tab-content active">
+        <div class="grid">
+          <div class="card">
+            <h2>Consulta de saldo</h2>
+            <label>Cuenta
+              <select id="balance-account" class="account-select"></select>
+            </label>
+            <button id="btn-consultar">Consultar</button>
+            <div class="result" id="balance-result"></div>
+          </div>
+
+          <div class="card">
+            <h2>Retiro</h2>
+            <label>Cuenta
+              <select id="withdraw-account" class="account-select"></select>
+            </label>
+            <label>Monto
+              <input id="withdraw-amount" type="number" min="20" step="10" placeholder="100.00" />
+            </label>
+            <button id="btn-retirar">Retirar</button>
+            <div class="result" id="withdraw-result"></div>
+          </div>
+
+          <div class="card">
+            <h2>Depósito</h2>
+            <label>Cuenta
+              <select id="deposit-account" class="account-select"></select>
+            </label>
+            <label>Monto
+              <input id="deposit-amount" type="number" min="20" step="10" placeholder="100.00" />
+            </label>
+            <button id="btn-depositar">Depositar</button>
+            <div class="result" id="deposit-result"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADMINISTRACIÓN -->
+      <section id="tab-admin" class="tab-content">
+        <div class="grid">
+          <div class="card">
+            <h2>Configuración del ATM</h2>
+            <p class="hint">Solo la primera vez. El ATM se registra automáticamente en el Banco Central.</p>
+            <label>Branch Code <input id="cfg-branch-code" value="SUC-001" /></label>
+            <label>API Key <input id="cfg-api-key" placeholder="atm_key_xxx" /></label>
+            <label>Central API URL <input id="cfg-central-url" value="http://localhost:4000" /></label>
+            <button id="btn-config">Registrar ATM</button>
+            <div class="result" id="config-result"></div>
+          </div>
+
+          <div class="card">
+            <h2>Cargar efectivo</h2>
+            <p class="hint">Agrega denominaciones al inventario local.</p>
+            <div class="denoms" id="denoms-container"></div>
+            <button type="button" id="btn-add-denom" class="btn-secondary">+ Agregar denominación</button>
+            <button id="btn-cargar">Cargar efectivo</button>
+            <div class="result" id="cash-load-result"></div>
+          </div>
+
+          <div class="card full">
+            <h2>Inventario de efectivo</h2>
+            <table>
+              <thead><tr><th>Denominación</th><th>Cantidad</th><th>Subtotal</th></tr></thead>
+              <tbody id="inventory-body"></tbody>
+              <tfoot><tr><th colspan="2">Total</th><th id="inventory-total">$0.00</th></tr></tfoot>
+            </table>
+          </div>
+
+          <div class="card full">
+            <h2>Historial local de operaciones</h2>
+            <table>
+              <thead><tr><th>Fecha</th><th>Código</th><th>Tipo</th><th>Cuenta</th><th>Monto</th><th>Estado</th></tr></thead>
+              <tbody id="operations-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer><small>Sistema Bancario Distribuido — Nodo ATM</small></footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
