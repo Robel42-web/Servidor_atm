@@ -79,6 +79,21 @@ CREATE TABLE IF NOT EXISTS atm_event_logs (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+
+-- Sesiones:
+DROP TABLE IF EXISTS atm_sessions;
+
+CREATE TABLE IF NOT EXISTS atm_sessions (
+  id TEXT PRIMARY KEY,
+  role TEXT NOT NULL CHECK (role IN ('user', 'admin')),
+  account_number TEXT,
+  central_account_id TEXT,  -- ← NUEVA COLUMNA
+  username TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TEXT
+);
+
+
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_atm_operations_created
   ON atm_operations(created_at DESC);
@@ -90,13 +105,3 @@ CREATE INDEX IF NOT EXISTS idx_atm_events_created
   ON atm_event_logs(created_at DESC);
 
 
-  CREATE TABLE IF NOT EXISTS atm_sessions (
-  id TEXT PRIMARY KEY,
-  user_id TEXT,
-  username TEXT,
-  role TEXT NOT NULL CHECK (role IN ('user', 'admin')),
-  token TEXT,
-  accounts_json TEXT NOT NULL DEFAULT '[]',
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  expires_at TEXT
-);

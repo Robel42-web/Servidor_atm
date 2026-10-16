@@ -27,15 +27,33 @@
   <!-- LOGIN -->
   <section id="login-screen" class="login-screen">
     <div class="login-card">
-      <h2>Iniciar sesión</h2>
-      <label>Usuario <input id="login-user" placeholder="admin o número de cuenta" /></label>
-      <label>Contraseña <input id="login-pass" type="password" /></label>
-      <button id="btn-login">Ingresar</button>
-      <div class="result" id="login-result"></div>
-      <p class="hint" style="margin-top:1rem;">
-        Admin: <code>admin / admin123</code><br>
-        Usuario: <code>1234567890 / 1234</code>
-      </p>
+      <div class="login-tabs">
+        <button type="button" class="login-tab active" data-target="user">Cliente</button>
+        <button type="button" class="login-tab" data-target="admin">Administrador</button>
+      </div>
+
+      <!-- Login de cliente -->
+      <div id="login-form-user" class="login-form active">
+        <h2>Consulta tu cuenta</h2>
+        <label>Número de cuenta
+          <input id="login-account" placeholder="Ej: 1000000001" autocomplete="off" />
+        </label>
+        <button id="btn-login-user">Ingresar</button>
+        <div class="result" id="login-user-result"></div>
+      </div>
+
+      <!-- Login de administrador -->
+      <div id="login-form-admin" class="login-form">
+        <h2>Panel de administración</h2>
+        <label>Usuario
+          <input id="login-admin-user" autocomplete="off" />
+        </label>
+        <label>Contraseña
+          <input id="login-admin-pass" type="password" autocomplete="off" />
+        </label>
+        <button id="btn-login-admin">Ingresar</button>
+        <div class="result" id="login-admin-result"></div>
+      </div>
     </div>
   </section>
 
@@ -50,38 +68,41 @@
       <!-- OPERACIONES -->
       <section id="tab-operations" class="tab-content active">
         <div class="grid">
-          <div class="card">
-            <h2>Consulta de saldo</h2>
-            <label>Cuenta
-              <select id="balance-account" class="account-select"></select>
-            </label>
-            <button id="btn-consultar">Consultar</button>
-            <div class="result" id="balance-result"></div>
-          </div>
+          <!-- Consulta de saldo -->
+        <div class="card">
+          <h2>Consulta de saldo</h2>
+          <label>Número de cuenta
+            <input id="balance-account" readonly />
+          </label>
+          <button id="btn-consultar">Consultar</button>
+          <div class="result" id="balance-result"></div>
+        </div>
 
-          <div class="card">
-            <h2>Retiro</h2>
-            <label>Cuenta
-              <select id="withdraw-account" class="account-select"></select>
-            </label>
-            <label>Monto
-              <input id="withdraw-amount" type="number" min="20" step="10" placeholder="100.00" />
-            </label>
-            <button id="btn-retirar">Retirar</button>
-            <div class="result" id="withdraw-result"></div>
-          </div>
+        <!-- Retiro -->
+        <div class="card">
+          <h2>Retiro</h2>
+          <label>Número de cuenta
+            <input id="withdraw-account" readonly />
+          </label>
+          <label>Monto
+            <input id="withdraw-amount" type="number" min="20" step="10" placeholder="100.00" />
+          </label>
+          <button id="btn-retirar">Retirar</button>
+          <div class="result" id="withdraw-result"></div>
+        </div>
 
-          <div class="card">
-            <h2>Depósito</h2>
-            <label>Cuenta
-              <select id="deposit-account" class="account-select"></select>
-            </label>
-            <label>Monto
-              <input id="deposit-amount" type="number" min="20" step="10" placeholder="100.00" />
-            </label>
-            <button id="btn-depositar">Depositar</button>
-            <div class="result" id="deposit-result"></div>
-          </div>
+        <!-- Depósito -->
+        <div class="card">
+          <h2>Depósito</h2>
+          <label>Número de cuenta
+            <input id="deposit-account" readonly />
+          </label>
+          <label>Monto
+            <input id="deposit-amount" type="number" min="20" step="10" placeholder="100.00" />
+          </label>
+          <button id="btn-depositar">Depositar</button>
+          <div class="result" id="deposit-result"></div>
+        </div>
         </div>
       </section>
 
@@ -90,11 +111,13 @@
         <div class="grid">
           <div class="card">
             <h2>Configuración del ATM</h2>
-            <p class="hint">Solo la primera vez. El ATM se registra automáticamente en el Banco Central.</p>
-            <label>Branch Code <input id="cfg-branch-code" value="SUC-001" /></label>
-            <label>API Key <input id="cfg-api-key" placeholder="atm_key_xxx" /></label>
-            <label>Central API URL <input id="cfg-central-url" value="http://localhost:4000" /></label>
-            <button id="btn-config">Registrar ATM</button>
+            <p class="hint">Introduce la API Key que te proporcionó el Banco Central al registrar este cajero.</p>
+            <label>ATM Code <input id="cfg-atm-code" value="ATM-001" /></label>
+            <label>Branch Code <input id="cfg-branch-code" placeholder="Ej: SUC-001" /></label>
+            <label>API Key <input id="cfg-api-key" placeholder="atm_xxx" /></label>
+            <label>Central API URL <input id="cfg-central-url" placeholder="http://127.0.0.1:8001" /></label>
+            <button id="btn-config">Guardar configuración</button>
+            <button id="btn-reset-config" class="btn-secondary">Reiniciar configuración</button>
             <div class="result" id="config-result"></div>
           </div>
 

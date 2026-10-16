@@ -7,138 +7,145 @@ app.use(express.json());
 
 // Estado en memoria
 const accounts = {
-  '1234567890': {
-    accountNumber: '1234567890',
-    holder_name: 'Cliente Demo',
-    balance: 5000.00,
-    status: 'active'
+  '6bbac642-d148-4a60-b28b-13833cb28cc5': {
+    id: '6bbac642-d148-4a60-b28b-13833cb28cc5',
+    numero_cuenta: '1000000001',
+    titular: 'Cliente Demo',
+    saldo_centavos: 500000, // $5000.00
+    estado: 'active',
+    moneda: 'MXN'
   }
 };
+
 const transactions = [];
 const idempotencyCache = {};
 
-// ---------- Saldo ----------
-app.get('/api/v1/accounts/:accountNumber/balance', (req, res) => {
-  const acc = accounts[req.params.accountNumber];
-  if (!acc) return res.status(404).json({ error: 'Cuenta no encontrada' });
-  console.log(`MOCK: Consulta saldo ${acc.accountNumber} → $${acc.balance.toFixed(2)}`);
-  res.json(acc);
+const VALID_API_KEY = 'atm_4d089f101df37f5ed520911a7cb8f8ab42faba011819e549b47097c9b9b2c09d';
+
+// Middleware de autenticación
+function checkBearer(req, res, next) {
+  const auth = req.headers['authorization'];
+  if (!auth || !auth.startsWith('Bearer ')) {
+    return res.status(401).json({ mensaje: 'Token de autorización requerido' });
+  }
+  const token = auth.replace('Bearer ', '');
+  if (token !== VALID_API_KEY) {
+    return res.status(401).json({ mensaje: 'API Key inválida' });
+  }
+  req.apiKey = token;
+  next();
+}
+
+// --- CONSULTAS ---
+
+app.get('/api/cuentas/numero/:numero', checkBearer, (req, res) => {
+  const cuenta = Object.values(accounts).find(
+    c => c.numero_cuenta === req.params.numero
+  );
+  if (!cuenta) {
+    return res.status(404).json({ mensaje: 'Cuenta no encontrada' });
+  }
+  console.log(`MOCK: Consulta cuenta por número ${req.params.numero}`);
+  res.json({ cuenta });
 });
 
-// ---------- Retiro ----------
-app.post('/api/v1/atm/withdrawals', (req, res) => {
-  const { accountNumber, amount, idempotencyKey, atmCode } = req.body;
+app.get('/api/cuentas/:id/saldo', checkBearer, (req, res) => {
+  const cuenta = accounts[req.params.id];
+  if (!cuenta) {
+    return res.status(404).json({ mensaje: 'Cuenta no encontrada' });
+  }
+  console.log(`MOCK: Consulta saldo de ${cuenta.numero_cuenta}`);
+  res.json({
+    cuenta_id: cuenta.id,
+    numero_cuenta: cuenta.numero_cuenta,
+    saldo_centavos: cuenta.saldo_centavos,
+    saldo: cuenta.saldo_centavos / 100,
+    moneda: 'MXN',
+    estado: cuenta.estado
+  });
+});
 
-  if (idempotencyCache[idempotencyKey]) {
-    console.log('MOCK: Idempotencia detectada (retiro), devolviendo resultado previo');
-    return res.json(idempotencyCache[idempotencyKey]);
+// --- OPERACIONES ---
+
+function procesarOperacion(req, res, tipo) {
+  const { cuenta_id, monto_centavos, idempotency_key, descripcion } = req.body;
+
+  if (!cuenta_id || !monto_centavos || !idempotency_key) {
+    return res.status(422).json({
+      mensaje: 'Los campos cuenta_id, monto_centavos e idempotency_key son obligatorios'
+    });
   }
 
-  const acc = accounts[accountNumber];
-  if (!acc) return res.status(404).json({ error: 'Cuenta no encontrada' });
-  if (acc.status !== 'active') return res.status(409).json({ error: 'Cuenta bloqueada' });
-  if (amount <= 0) return res.status(400).json({ error: 'Monto inválido' });
-  if (acc.balance < amount) return res.status(409).json({ error: 'Saldo insuficiente' });
+  // Idempotencia
+  if (idempotencyCache[idempotency_key]) {
+    console.log(`MOCK: Idempotencia detectada para ${idempotency_key}`);
+    return res.json({
+      movimiento: idempotencyCache[idempotency_key],
+      repetida: true
+    });
+  }
 
-  acc.balance -= amount;
-  const tx = {
-    transactionId: 'mock-tx-' + Date.now(),
+  const cuenta = accounts[cuenta_id];
+  if (!cuenta) {
+    return res.status(404).json({ mensaje: 'Cuenta no encontrada' });
+  }
+  if (cuenta.estado !== 'active') {
+    return res.status(422).json({ mensaje: `Cuenta en estado ${cuenta.estado}` });
+  }
+
+  const montoCentavos = parseInt(monto_centavos);
+
+  if (tipo === 'withdrawal' && cuenta.saldo_centavos < montoCentavos) {
+    return res.status(422).json({ mensaje: 'Saldo insuficiente' });
+  }
+
+  // Aplicar operación
+  if (tipo === 'withdrawal') {
+    cuenta.saldo_centavos -= montoCentavos;
+  } else {
+    cuenta.saldo_centavos += montoCentavos;
+  }
+
+  const movimiento = {
+    id: 'mov-' + Date.now(),
+    account_origin_id: tipo === 'withdrawal' ? cuenta.id : null,
+    account_destination_id: tipo === 'deposit' ? cuenta.id : null,
+    amount: montoCentavos,
+    type: tipo,
     status: 'completed',
-    newBalance: acc.balance
-  };
-  transactions.push({ accountNumber, amount, type: 'withdrawal', atmCode, ...tx });
-  idempotencyCache[idempotencyKey] = tx;
-
-  console.log(`MOCK: Retiro $${amount} de ${accountNumber} → nuevo saldo $${acc.balance.toFixed(2)}`);
-  res.json(tx);
-});
-
-// ---------- Depósito ----------
-app.post('/api/v1/atm/deposits', (req, res) => {
-  const { accountNumber, amount, idempotencyKey, atmCode } = req.body;
-
-  if (idempotencyCache[idempotencyKey]) {
-    console.log('MOCK: Idempotencia detectada (depósito), devolviendo resultado previo');
-    return res.json(idempotencyCache[idempotencyKey]);
-  }
-
-  const acc = accounts[accountNumber];
-  if (!acc) return res.status(404).json({ error: 'Cuenta no encontrada' });
-  if (acc.status !== 'active') return res.status(409).json({ error: 'Cuenta bloqueada' });
-  if (amount <= 0) return res.status(400).json({ error: 'Monto inválido' });
-
-  acc.balance += amount;
-  const tx = {
-    transactionId: 'mock-tx-' + Date.now(),
-    status: 'completed',
-    newBalance: acc.balance
-  };
-  transactions.push({ accountNumber, amount, type: 'deposit', atmCode, ...tx });
-  idempotencyCache[idempotencyKey] = tx;
-
-  console.log(`MOCK: Depósito $${amount} a ${accountNumber} → nuevo saldo $${acc.balance.toFixed(2)}`);
-  res.json(tx);
-});
-
-// ---------- Debug ----------
-app.get('/api/v1/admin/transactions', (req, res) => {
-  res.json(transactions);
-});
-
-app.listen(4000, () => {
-  console.log('Mock del Banco Central escuchando en el puerto 4000');
-  console.log('Cuenta demo: 1234567890 con saldo inicial $5000.00');
-});
-
-// ---------- Login ----------
-const MOCK_CREDENTIALS = {
-  admin: { password: 'admin123', role: 'admin', userId: 'admin-uuid-1', branchCode: 'SUC-001' },
-  '1234567890': { password: '1234', role: 'user', userId: 'user-uuid-1', accounts: ['1234567890', '9876543210'] }
-};
-
-app.post('/api/v1/auth/login', (req, res) => {
-  const { username, password } = req.body;
-  const cred = MOCK_CREDENTIALS[username];
-  if (!cred || cred.password !== password) {
-    return res.status(401).json({ error: 'Credenciales inválidas' });
-  }
-
-  const token = 'mock-token-' + Date.now();
-  const response = {
-    userId: cred.userId,
-    username,
-    role: cred.role,
-    token
+    idempotency_key,
+    description: descripcion || `Operación desde ATM`,
+    created_at: new Date().toISOString()
   };
 
-  if (cred.role === 'user') {
-    response.accounts = cred.accounts.map(num => ({
-      accountNumber: num,
-      holder_name: accounts[num]?.holder_name || 'Cliente Demo'
-    }));
-  }
+  transactions.push(movimiento);
+  idempotencyCache[idempotency_key] = movimiento;
 
-  if (cred.role === 'admin') {
-    response.branchCode = cred.branchCode;
-  }
+  console.log(
+    `MOCK: ${tipo === 'withdrawal' ? 'Retiro' : 'Depósito'} de $${(montoCentavos / 100).toFixed(2)} ` +
+    `en cuenta ${cuenta.numero_cuenta}. Nuevo saldo: $${(cuenta.saldo_centavos / 100).toFixed(2)}`
+  );
 
-  console.log(`MOCK: Login de ${username} como ${cred.role}`);
-  res.json(response);
+  res.status(201).json({ movimiento, repetida: false });
+}
+
+app.post('/api/operaciones/depositos', checkBearer, (req, res) => {
+  procesarOperacion(req, res, 'deposit');
 });
 
-// ---------- Registro de ATM ----------
-let atmCounter = 1;
+app.post('/api/operaciones/retiros', checkBearer, (req, res) => {
+  procesarOperacion(req, res, 'withdrawal');
+});
 
-app.post('/api/v1/atms/register', (req, res) => {
-  const { branchCode, apiKey } = req.body;
-  if (!branchCode || !apiKey) {
-    return res.status(400).json({ error: 'branchCode y apiKey son obligatorios' });
-  }
+// --- HEALTH ---
 
-  const atmId = `mock-atm-uuid-${atmCounter}`;
-  const atmCode = `ATM-${String(atmCounter).padStart(3, '0')}`;
-  atmCounter++;
+app.get('/api', (req, res) => {
+  res.json({ servicio: 'Banco Central (MOCK)', estado: 'OK' });
+});
 
-  console.log(`MOCK: ATM registrado → ${atmCode} (branch ${branchCode})`);
-  res.json({ atmId, atmCode, branchCode });
+const PORT = 8001;
+app.listen(PORT, () => {
+  console.log(`Mock del Banco Central escuchando en el puerto ${PORT}`);
+  console.log(`Cuenta demo: 1000000001 (UUID: 6bbac642-...) con saldo $5000.00`);
+  console.log(`API Key válida: ${VALID_API_KEY.slice(0, 20)}...`);
 });

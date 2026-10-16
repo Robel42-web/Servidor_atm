@@ -308,6 +308,7 @@ async function cargarOperaciones() {
 }
 
 // ------- Sesión -------
+// ------- Sesión -------
 let session = null;
 
 async function checkSession() {
@@ -330,63 +331,84 @@ function enterApp() {
   $('login-screen').style.display = 'none';
   $('app').style.display = 'block';
   $('session-info').style.display = 'block';
-  $('session-user').textContent = `${session.username} (${session.role})`;
+
+  if (session.role === 'admin') {
+    $('session-user').textContent = `${session.username} (admin)`;
+  } else {
+    $('session-user').textContent = `Cuenta ${session.accountNumber}`;
+  }
 
   // Ocultar administración si no es admin
   document.querySelectorAll('[data-role="admin"]').forEach(el => {
     el.style.display = session.role === 'admin' ? '' : 'none';
   });
 
-  // Si el usuario no es admin y está en la pestaña admin, volver a operaciones
-  if (session.role !== 'admin') {
-    document.querySelector('.tabs button[data-tab="operations"]').click();
+  // Cargar número de cuenta en inputs (para cliente)
+  if (session.role === 'user') {
+    ['balance-account', 'withdraw-account', 'deposit-account'].forEach(id => {
+      const el = $(id);
+      if (el) {
+        el.value = session.accountNumber;
+        el.readOnly = true;
+      }
+    });
+  } else {
+    // Admin puede escribir
+    ['balance-account', 'withdraw-account', 'deposit-account'].forEach(id => {
+      const el = $(id);
+      if (el) {
+        el.value = '';
+        el.readOnly = false;
+      }
+    });
   }
 
-  // Cargar cuentas en los selects
-  loadAccountOptions();
-
   refreshStatus();
-  cargarInventario();
-  cargarOperaciones();
+  if (session.role === 'admin') {
+    cargarInventario();
+    cargarOperaciones();
+    cargarConciliaciones();
+  }
 }
 
-function loadAccountOptions() {
-  const selects = ['balance-account', 'withdraw-account', 'deposit-account'];
-  selects.forEach(id => {
-    const sel = $(id);
-    sel.innerHTML = '';
-    if (session.role === 'admin') {
-      // Admin escribe la cuenta a mano → usamos input en vez de select
-      const input = document.createElement('input');
-      input.id = id;
-      input.placeholder = 'Número de cuenta';
-      sel.parentNode.replaceChild(input, sel);
-      return;
-    }
-    session.accounts.forEach(a => {
-      const opt = document.createElement('option');
-      opt.value = a.accountNumber;
-      opt.textContent = `${a.accountNumber} — ${a.holder_name}`;
-      sel.appendChild(opt);
-    });
+// ------- Tabs de login -------
+document.querySelectorAll('.login-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.login-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
+    btn.classList.add('active');
+    $('login-form-' + btn.dataset.target).classList.add('active');
   });
-}
+});
 
-// Login
-document.getElementById('btn-login').addEventListener('click', async () => {
-  const username = $('login-user').value.trim();
-  const password = $('login-pass').value;
-  if (!username || !password) return showResult('login-result', 'Completa usuario y contraseña', 'error');
+// ------- Login cliente -------
+document.getElementById('btn-login-user').addEventListener('click', async () => {
+  const accountNumber = $('login-account').value.trim();
+  if (!accountNumber) return showResult('login-user-result', 'Ingresa tu número de cuenta', 'error');
   try {
-    const r = await api('/login', 'POST', { username, password });
-    session = r;
-    showResult('login-result', `Bienvenido ${r.username}`, 'success');
+    session = await api('/login', 'POST', { accountNumber });
+    showResult('login-user-result', 'Acceso concedido', 'success');
     setTimeout(enterApp, 300);
   } catch (e) {
-    showResult('login-result', e.message, 'error');
+    showResult('login-user-result', e.message, 'error');
   }
 });
 
+// ------- Login admin -------
+document.getElementById('btn-login-admin').addEventListener('click', async () => {
+  const username = $('login-admin-user').value.trim();
+  const password = $('login-admin-pass').value;
+  if (!username || !password) return showResult('login-admin-result', 'Completa todos los campos', 'error');
+  try {
+    session = await api('/login-admin', 'POST', { username, password });
+    showResult('login-admin-result', 'Acceso concedido', 'success');
+    setTimeout(enterApp, 300);
+  } catch (e) {
+    showResult('login-admin-result', e.message, 'error');
+  }
+});
+
+// ------- Logout -------
 document.getElementById('btn-logout').addEventListener('click', async () => {
   try { await api('/logout', 'POST'); } catch {}
   session = null;
@@ -397,16 +419,32 @@ document.getElementById('btn-logout').addEventListener('click', async () => {
 document.getElementById('btn-config').addEventListener('click', async () => {
   try {
     const r = await api('/configure', 'POST', {
+      atmCode: $('cfg-atm-code').value.trim(),
       branchCode: $('cfg-branch-code').value.trim(),
       apiKey: $('cfg-api-key').value.trim(),
       centralApiUrl: $('cfg-central-url').value.trim()
     });
-    showResult('config-result', `${r.message} → ${r.atmCode}`, 'success');
+    showResult('config-result', r.message, 'success');
     refreshStatus();
   } catch (e) {
     showResult('config-result', e.message, 'error');
   }
 });
+
+// ------- Reiniciar Configuración (solo admin) -------
+document.getElementById('btn-reset-config').addEventListener('click', async () => {
+  if (!confirm('¿Seguro que quieres borrar la configuración actual?')) return;
+  try {
+    const r = await api('/reset-config', 'POST');
+    showResult('config-result', r.message, 'success');
+    refreshStatus();
+  } catch (e) {
+    showResult('config-result', e.message, 'error');
+  }
+});
+//Fin de la sección de Sesión
+
+
 
 // Resto de listeners
 document.getElementById('btn-consultar').addEventListener('click', consultarSaldo);

@@ -2,11 +2,11 @@ const CENTRAL_API_URL = process.env.CENTRAL_API_URL;
 const ATM_API_KEY = process.env.ATM_API_KEY;
 
 async function callCentral(endpoint, method = 'GET', body = null) {
-  const res = await fetch(`${CENTRAL_API_URL}${endpoint}`, {
+  const res = await fetch(`${process.env.CENTRAL_API_URL}${endpoint}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      'X-API-Key': ATM_API_KEY
+      'Authorization': `Bearer ${process.env.ATM_API_KEY}`
     },
     body: body ? JSON.stringify(body) : null
   });
@@ -18,39 +18,43 @@ async function callCentral(endpoint, method = 'GET', body = null) {
   } catch {
     throw new Error(`Banco Central devolvió respuesta no JSON (HTTP ${res.status}): ${text.slice(0, 120)}`);
   }
-
-  if (!res.ok) {
-    throw new Error(data.error || `Central error: ${res.status}`);
-  }
+  if (!res.ok) throw new Error(data.error || `Central error: ${res.status}`);
   return data;
 }
 
-// -------- Funciones exportadas --------
-
-function getBalance(accountNumber) {
-  return callCentral(`/api/v1/accounts/${accountNumber}/balance`);
+function getAccountByNumber(numero) {
+  return callCentral(`/api/cuentas/numero/${numero}`);
 }
 
-function withdraw(payload) {
-  return callCentral('/api/v1/atm/withdrawals', 'POST', payload);
+function getBalance(cuentaId) {
+  return callCentral(`/api/cuentas/${cuentaId}/saldo`);
 }
 
-function deposit(payload) {
-  return callCentral('/api/v1/atm/deposits', 'POST', payload);
+function withdraw({ cuentaId, montoCentavos, idempotencyKey, descripcion }) {
+  return callCentral('/api/operaciones/retiros', 'POST', {
+    cuenta_id: cuentaId,
+    monto_centavos: montoCentavos,
+    idempotency_key: idempotencyKey,
+    descripcion: descripcion || 'Retiro desde ATM'
+  });
+}
+
+function deposit({ cuentaId, montoCentavos, idempotencyKey, descripcion }) {
+  return callCentral('/api/operaciones/depositos', 'POST', {
+    cuenta_id: cuentaId,
+    monto_centavos: montoCentavos,
+    idempotency_key: idempotencyKey,
+    descripcion: descripcion || 'Depósito desde ATM'
+  });
 }
 
 function reverse(centralTransactionId, amount) {
-  return callCentral(
-    `/api/v1/atm/transactions/${centralTransactionId}/reverse`,
-    'POST',
-    { amount }
-  );
+  return callCentral(`/api/atm/transacciones/${centralTransactionId}/reverso`, 'POST', { amount });
 }
-
 function reportCash(atmId, cashTotal) {
-  return callCentral(`/api/v1/atms/${atmId}/cash`, 'PATCH', {
+  return callCentral(`/api/atm/cajeros/${atmId}/efectivo`, 'PATCH', {
     reported_cash_available: cashTotal
   });
 }
 
-module.exports = { getBalance, withdraw, deposit, reverse, reportCash };
+module.exports = { getAccountByNumber, getBalance, withdraw, deposit };
